@@ -9,7 +9,7 @@ Frontend jest samodzielnym demo tablicy Kanban. Pokazuje:
 - dodawanie i usuwanie kart,
 - przenoszenie kart drag-and-drop.
 
-Na tym etapie frontend nie ma backendowej autoryzacji ani trwalego zapisu danych.
+Na tym etapie frontend ma trwaly zapis przez backend API, ale nadal nie ma backendowej autoryzacji.
 
 ## Stack i narzedzia
 
@@ -30,12 +30,15 @@ Na tym etapie frontend nie ma backendowej autoryzacji ani trwalego zapisu danych
 ### `src/components/KanbanBoard.tsx`
 
 Komponent-klient zarzadzajacy stanem tablicy:
-- trzyma lokalny stan `board` (`columns` + `cards`),
+- laduje tablice z backendu (`GET /api/kanban/user`),
+- synchronizuje zmiany tablicy do backendu (`PUT /api/kanban/user`),
+- trzyma lokalny stan `board` (`columns` + `cards`) jako stan roboczy,
 - obsluguje drag-and-drop (start/koniec),
 - obsluguje zmiane nazwy kolumny,
 - obsluguje dodanie i usuniecie karty,
 - renderuje `KanbanColumn` dla kazdej kolumny,
-- renderuje `DragOverlay` z `KanbanCardPreview`.
+- renderuje `DragOverlay` z `KanbanCardPreview`,
+- pokazuje minimalna obsluge bledow sieci (load/sync).
 
 ### `src/components/AuthGate.tsx`
 
@@ -60,6 +63,13 @@ Definicje logowania demo:
 - klucz i wartosc tokenu frontendowego,
 - `validateCredentials(...)` do walidacji danych logowania.
 
+### `src/lib/kanbanApi.ts`
+
+Prosty klient API do:
+- pobrania tablicy po username,
+- zapisu tablicy po username,
+- mapowania odpowiedzi bledow backendu.
+
 ## Komponenty UI
 
 - `src/components/KanbanColumn.tsx`:
@@ -81,6 +91,7 @@ Definicje logowania demo:
 
 - `src/lib/kanban.test.ts`: testy funkcji `moveCard`.
 - `src/lib/auth.test.ts`: testy walidacji danych logowania.
+- `src/lib/kanbanApi.test.ts`: testy klienta API tablicy.
 - `src/components/KanbanBoard.test.tsx`: render kolumn, zmiana nazwy, dodanie/usuniecie karty.
 - `tests/kanban.spec.ts`: logowanie, wylogowanie, smoke tablicy, operacje kart.
 - `vitest.config.ts`: jsdom, setup testow, alias `@`.
@@ -97,9 +108,8 @@ Definicje logowania demo:
 
 ## Stan obecny i ograniczenia
 
-- Dane tablicy sa tylko w pamieci (reset po odswiezeniu).
+- Dane tablicy pochodza z backendu i sa synchronizowane przez API.
 - Logowanie jest tylko frontendowe (token w `localStorage`), bez bezpieczenstwa produkcyjnego.
-- Brak integracji z backend API.
 - Brak panelu czatu AI.
 
 ## Wskazowki dla kolejnych etapow

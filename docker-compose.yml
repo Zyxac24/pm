@@ -6,3 +6,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    volumes:
+      - kanban_data:/app/backend/data
+
+volumes:
+  kanban_data:
