@@ -5,6 +5,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from pydantic import ValidationError
+
+from app.models import BoardModel
+
 
 class UserNotFoundError(Exception):
     pass
@@ -119,6 +123,7 @@ class KanbanRepository:
                 """,
                 (user_row["id"], json.dumps(DEFAULT_BOARD), updated_at),
             )
+            self._repair_demo_board_if_invalid(connection, user_row["id"])
             connection.commit()
 
     def get_board(self, username: str) -> dict[str, Any]:
@@ -174,3 +179,36 @@ class KanbanRepository:
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON;")
         return connection
+
+    def _repair_demo_board_if_invalid(
+        self,
+        connection: sqlite3.Connection,
+        user_id: int,
+    ) -> None:
+        row = connection.execute(
+            """
+            SELECT board_json
+            FROM kanban_boards
+            WHERE user_id = ?
+            """,
+            (user_id,),
+        ).fetchone()
+        if row is None:
+            return
+
+        should_repair = False
+        try:
+            parsed_board = json.loads(row["board_json"])
+            BoardModel.model_validate(parsed_board)
+        except (json.JSONDecodeError, ValidationError):
+            should_repair = True
+
+        if should_repair:
+            connection.execute(
+                """
+                UPDATE kanban_boards
+                SET board_json = ?, updated_at = ?, version = version + 1
+                WHERE user_id = ?
+                """,
+                (json.dumps(DEFAULT_BOARD), _now_iso(), user_id),
+            )

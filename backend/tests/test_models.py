@@ -42,6 +42,21 @@ class BoardModelValidationTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             BoardModel.model_validate(invalid_board)
 
+    def test_rejects_missing_fixed_columns(self) -> None:
+        invalid_board = {
+            **DEFAULT_BOARD,
+            "columns": [
+                {
+                    "id": "col-backlog",
+                    "title": "Backlog",
+                    "cardIds": list(DEFAULT_BOARD["cards"].keys()),
+                }
+            ],
+        }
+
+        with self.assertRaises(ValidationError):
+            BoardModel.model_validate(invalid_board)
+
 
 if __name__ == "__main__":
     unittest.main()

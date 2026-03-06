@@ -6,6 +6,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     volumes:
       - kanban_data:/app/backend/data
 

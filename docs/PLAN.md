@@ -17,6 +17,49 @@
 - [ ] Dodatkowe testy dopisujemy tam, gdzie zmniejszają ryzyko regresji lub chronią ważny kontrakt API/UI.
 - [ ] Nie dodajemy testów niskiej wartości tylko po to, by sztucznie podbić pokrycie.
 
+## Status i decyzje wykonawcze (Części 1-10)
+
+### Status etapów
+
+- [x] Część 1 zakończona i zaakceptowana.
+- [x] Część 2 zakończona i zaakceptowana.
+- [x] Część 3 zakończona i zaakceptowana.
+- [x] Część 4 zakończona i zaakceptowana.
+- [x] Część 5 zakończona i zaakceptowana.
+- [x] Część 6 zakończona i zaakceptowana.
+- [x] Część 7 zakończona i zaakceptowana.
+- [x] Część 8 zakończona i zaakceptowana.
+- [x] Część 9 zakończona i zaakceptowana.
+- [ ] Część 10 wykonana technicznie, oczekuje na akceptację użytkownika.
+
+### Decyzje zrealizowane
+
+- [x] Część 4: logowanie jest frontendowe, token przechowywany po stronie frontendu (`localStorage`).
+- [x] Część 5: model danych oparty o `users` + `kanban_boards` z JSON snapshot (`docs/DATABASE_SCHEMA.md`).
+- [x] Część 6: backend udostępnia `GET` i `PUT` pod `/api/kanban/{username}`.
+- [x] Część 6: baza SQLite tworzy się automatycznie przy starcie, wraz z seedem użytkownika `user`.
+- [x] Część 6: payload tablicy ma walidację spójności (integralność kart i kolumn).
+- [x] Część 7: frontend pobiera i zapisuje tablicę przez API backendu (zamiast lokalnego stanu demo).
+- [x] Część 7: trwałość danych między restartami zapewnia Docker volume (`kanban_data`).
+- [x] Część 7: dodana minimalna obsługa błędów sieciowych w UI (load/sync + retry).
+- [x] Część 8: backend zintegrowany z OpenRouter przez `OPENROUTER_API_KEY` i model `openai/gpt-oss-120b`.
+- [x] Część 8: dodany endpoint techniczny `POST /api/ai/test` wykonujący test promptem `2+2`.
+- [x] Część 8: brak klucza środowiskowego zwraca kontrolowany, czytelny błąd.
+- [x] Część 9: prompt backendu rozszerzony o JSON tablicy, historię i pytanie użytkownika.
+- [x] Część 9: odpowiedź AI wymuszona przez Structured Outputs i walidowana po stronie backendu.
+- [x] Część 9: dodany format odpowiedzi `message + optional patch` oraz bezpieczne zastosowanie patcha.
+- [x] Część 10: dodany panel boczny czatu AI w UI z historią rozmowy i wysyłką zapytań.
+- [x] Część 10: po odpowiedzi backendu tablica odświeża się automatycznie danymi z odpowiedzi AI.
+
+### Raport pokrycia i decyzje jakościowe
+
+- [x] Część 4: pokrycie frontendu (`src/**`) ~63.86% lines; brak 80% zaakceptowany, bo testy skupione na kluczowych ścieżkach logowania i regresji.
+- [x] Część 6: pokrycie backendu (`app/*`) ~54% globalnie; `db.py` i `models.py` ~96%, niski wynik globalny przez brak pełnego pokrycia `main.py` w pierwszym przebiegu.
+- [x] Część 7: dołożono testy API i integracyjne, by podnieść pokrycie obszarów o najwyższym ryzyku regresji.
+- [x] Część 8: dodano testy endpointu AI (ścieżka sukcesu, brak klucza, mapowanie błędu upstream) oraz test integracyjny z realnym OpenRouterem aktywny przy ustawionym kluczu.
+- [x] Część 9: dodano testy odpowiedzi bez patcha, z patchem (create/edit/move) oraz test błędu odpowiedzi niezgodnej ze schematem.
+- [x] Część 10: dodano testy UI czatu, aktualizacji widoku po patchu AI i utrzymano testy regresji operacji Kanban.
+
 ## Część 1: Planowanie
 
 ### Zakres
@@ -161,59 +204,59 @@
 
 ### Zakres
 
-- [ ] Dodać integrację backendu z OpenRouter przez `OPENROUTER_API_KEY`.
-- [ ] Ustawić model `openai/gpt-oss-120b`.
-- [ ] Dodać prosty endpoint/test techniczny połączenia.
+- [x] Dodać integrację backendu z OpenRouter przez `OPENROUTER_API_KEY`.
+- [x] Ustawić model `openai/gpt-oss-120b`.
+- [x] Dodać prosty endpoint/test techniczny połączenia.
 
 ### Testy (realistyczne minimum)
 
-- [ ] Test połączenia AI z promptem `2+2`.
-- [ ] Obsługa braku klucza środowiskowego (czytelny błąd).
+- [x] Test połączenia AI z promptem `2+2`.
+- [x] Obsługa braku klucza środowiskowego (czytelny błąd).
 
 ### Kryteria sukcesu
 
-- [ ] Backend poprawnie komunikuje się z OpenRouter.
-- [ ] Mamy potwierdzony działający przepływ request/response.
+- [x] Backend poprawnie komunikuje się z OpenRouter.
+- [x] Mamy potwierdzony działający przepływ request/response.
 
 ## Część 9: Structured Outputs dla AI + patch Kanbana
 
 ### Zakres
 
-- [ ] Rozszerzyć prompt backendu: JSON tablicy, pytanie użytkownika, historia rozmowy.
-- [ ] Wymusić odpowiedź AI w Structured Outputs.
-- [ ] Zdefiniować format odpowiedzi: wiadomość dla użytkownika + opcjonalny patch Kanbana.
-- [ ] Wdrożyć walidację i bezpieczne zastosowanie patcha po stronie backendu.
+- [x] Rozszerzyć prompt backendu: JSON tablicy, pytanie użytkownika, historia rozmowy.
+- [x] Wymusić odpowiedź AI w Structured Outputs.
+- [x] Zdefiniować format odpowiedzi: wiadomość dla użytkownika + opcjonalny patch Kanbana.
+- [x] Wdrożyć walidację i bezpieczne zastosowanie patcha po stronie backendu.
 
 ### Testy (realistyczne minimum)
 
-- [ ] Test poprawnej odpowiedzi bez patcha.
-- [ ] Test poprawnej odpowiedzi z patchem (create/edit/move).
-- [ ] Test odpowiedzi niezgodnej ze schematem (walidacja i błąd kontrolowany).
+- [x] Test poprawnej odpowiedzi bez patcha.
+- [x] Test poprawnej odpowiedzi z patchem (create/edit/move).
+- [x] Test odpowiedzi niezgodnej ze schematem (walidacja i błąd kontrolowany).
 
 ### Kryteria sukcesu
 
-- [ ] Backend przyjmuje i stosuje poprawny patch.
-- [ ] Błędny format odpowiedzi AI nie psuje danych tablicy.
+- [x] Backend przyjmuje i stosuje poprawny patch.
+- [x] Błędny format odpowiedzi AI nie psuje danych tablicy.
 
 ## Część 10: Panel boczny czatu AI w UI
 
 ### Zakres
 
-- [ ] Dodać panel boczny czatu w interfejsie frontendu.
-- [ ] Obsłużyć historię rozmowy i wysyłkę zapytań do backendu.
-- [ ] Po odpowiedzi z patchem odświeżać tablicę automatycznie.
-- [ ] Zachować prosty, czytelny UX zgodny z kolorystyką projektu.
+- [x] Dodać panel boczny czatu w interfejsie frontendu.
+- [x] Obsłużyć historię rozmowy i wysyłkę zapytań do backendu.
+- [x] Po odpowiedzi z patchem odświeżać tablicę automatycznie.
+- [x] Zachować prosty, czytelny UX zgodny z kolorystyką projektu.
 
 ### Testy (realistyczne minimum)
 
-- [ ] Test UI: wysłanie wiadomości i wyświetlenie odpowiedzi AI.
-- [ ] Test integracyjny: odpowiedź AI z patchem aktualizuje widok tablicy.
-- [ ] Test regresji: podstawowe operacje Kanbana nadal działają.
+- [x] Test UI: wysłanie wiadomości i wyświetlenie odpowiedzi AI.
+- [x] Test integracyjny: odpowiedź AI z patchem aktualizuje widok tablicy.
+- [x] Test regresji: podstawowe operacje Kanbana nadal działają.
 
 ### Kryteria sukcesu
 
-- [ ] Użytkownik może prowadzić czat AI w panelu bocznym.
-- [ ] Aktualizacje Kanbana z patcha AI są widoczne automatycznie.
+- [x] Użytkownik może prowadzić czat AI w panelu bocznym.
+- [x] Aktualizacje Kanbana z patcha AI są widoczne automatycznie.
 
 ## Reguła przejścia między etapami
 

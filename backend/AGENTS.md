@@ -22,6 +22,8 @@ Backend dostarcza MVP do potwierdzenia:
 
 - `GET /` - zwraca frontend Kanban z builda statycznego.
 - `GET /api/health` - zwraca JSON potwierdzajacy stan backendu.
+- `POST /api/ai/test` - wykonuje techniczny test polaczenia z OpenRouter (`2+2`).
+- `POST /api/ai/chat/{username}` - czat AI ze Structured Outputs oraz opcjonalnym patchem tablicy.
 - `GET /api/kanban/{username}` - zwraca tablice Kanban uzytkownika.
 - `PUT /api/kanban/{username}` - zapisuje tablice Kanban uzytkownika po walidacji payloadu.
 

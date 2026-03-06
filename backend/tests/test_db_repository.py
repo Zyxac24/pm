@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from app.db import KanbanRepository, UserNotFoundError
+from app.db import DEFAULT_BOARD, KanbanRepository, UserNotFoundError
 
 
 class KanbanRepositoryTests(unittest.TestCase):
@@ -47,6 +47,23 @@ class KanbanRepositoryTests(unittest.TestCase):
 
         with self.assertRaises(UserNotFoundError):
             self.repository.update_board("missing-user", board)
+
+    def test_initialize_repairs_invalid_demo_board_shape(self) -> None:
+        self.repository.initialize()
+        invalid_board = {
+            "columns": [{"id": "col-backlog", "title": "Only one", "cardIds": ["card-1"]}],
+            "cards": {"card-1": {"id": "card-1", "title": "Only card", "details": "data"}},
+        }
+        self.repository.update_board("user", invalid_board)
+
+        self.repository.initialize()
+        repaired_board = self.repository.get_board("user")
+
+        self.assertEqual(len(repaired_board["columns"]), 5)
+        self.assertEqual(
+            [column["id"] for column in repaired_board["columns"]],
+            [column["id"] for column in DEFAULT_BOARD["columns"]],
+        )
 
 
 if __name__ == "__main__":

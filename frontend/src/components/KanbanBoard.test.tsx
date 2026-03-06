@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { KanbanBoard } from "@/components/KanbanBoard";
-import { initialData } from "@/lib/kanban";
+import { initialData, type BoardData } from "@/lib/kanban";
 
 const jsonResponse = (payload: unknown) =>
   new Response(JSON.stringify(payload), {
@@ -10,19 +10,37 @@ const jsonResponse = (payload: unknown) =>
   });
 
 const getFirstColumn = async () => (await screen.findAllByTestId(/column-/i))[0];
+const cloneBoard = (board: BoardData) => JSON.parse(JSON.stringify(board)) as BoardData;
 
 describe("KanbanBoard", () => {
+  let aiChatResponse: unknown;
+
   beforeEach(() => {
+    aiChatResponse = {
+      message: "Sure, I can help.",
+      patchApplied: false,
+      board: cloneBoard(initialData),
+    };
+
     vi.stubGlobal(
       "fetch",
-      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : input.url;
         const method = init?.method ?? "GET";
+        if (method === "POST" && url.includes("/api/ai/chat/")) {
+          return jsonResponse(aiChatResponse);
+        }
         if (method === "PUT") {
           const parsedBody =
-            typeof init?.body === "string" ? JSON.parse(init.body) : initialData;
+            typeof init?.body === "string" ? JSON.parse(init.body) : cloneBoard(initialData);
           return jsonResponse(parsedBody);
         }
-        return jsonResponse(initialData);
+        return jsonResponse(cloneBoard(initialData));
       })
     );
   });
@@ -60,7 +78,7 @@ describe("KanbanBoard", () => {
 
     await userEvent.click(within(column).getByRole("button", { name: /add card/i }));
 
-    expect(within(column).getByText("New card")).toBeInTheDocument();
+    expect(within(column).getByRole("heading", { name: "New card" })).toBeInTheDocument();
 
     const deleteButton = within(column).getByRole("button", {
       name: /delete new card/i,
@@ -68,5 +86,64 @@ describe("KanbanBoard", () => {
     await userEvent.click(deleteButton);
 
     expect(within(column).queryByText("New card")).not.toBeInTheDocument();
+  });
+
+  it("edits a card title and details", async () => {
+    render(<KanbanBoard />);
+    const column = await getFirstColumn();
+    const firstCard = within(column).getByTestId("card-card-1");
+
+    await userEvent.click(within(firstCard).getByRole("button", { name: /edit/i }));
+
+    const titleInput = within(firstCard).getByLabelText("Card title");
+    await userEvent.clear(titleInput);
+    await userEvent.type(titleInput, "Updated card title");
+
+    const detailsInput = within(firstCard).getByLabelText("Card details");
+    await userEvent.clear(detailsInput);
+    await userEvent.type(detailsInput, "Updated card details");
+
+    await userEvent.click(within(firstCard).getByRole("button", { name: /save/i }));
+
+    expect(
+      within(firstCard).getByRole("heading", { name: "Updated card title" })
+    ).toBeInTheDocument();
+    expect(within(firstCard).getByText("Updated card details")).toBeInTheDocument();
+  });
+
+  it("sends chat message and renders AI response", async () => {
+    render(<KanbanBoard />);
+    await screen.findAllByTestId(/column-/i);
+
+    const input = screen.getByLabelText("AI message input");
+    await userEvent.type(input, "Plan my next steps");
+    await userEvent.click(screen.getByRole("button", { name: /send/i }));
+
+    expect(await screen.findByText("Plan my next steps")).toBeInTheDocument();
+    expect(await screen.findByText("Sure, I can help.")).toBeInTheDocument();
+  });
+
+  it("applies AI patch response and refreshes board view", async () => {
+    const patchedBoard = cloneBoard(initialData);
+    patchedBoard.cards["card-1"] = {
+      ...patchedBoard.cards["card-1"],
+      title: "Patched by AI",
+      details: "Patched details",
+    };
+    aiChatResponse = {
+      message: "Updated card one.",
+      patchApplied: true,
+      board: patchedBoard,
+    };
+
+    render(<KanbanBoard />);
+    await screen.findAllByTestId(/column-/i);
+
+    const input = screen.getByLabelText("AI message input");
+    await userEvent.type(input, "Update first card");
+    await userEvent.click(screen.getByRole("button", { name: /send/i }));
+
+    expect(await screen.findByRole("heading", { name: "Patched by AI" })).toBeInTheDocument();
+    expect(screen.getByText("Patched details")).toBeInTheDocument();
   });
 });

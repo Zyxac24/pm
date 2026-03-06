@@ -7,9 +7,10 @@ Frontend jest samodzielnym demo tablicy Kanban. Pokazuje:
 - staly uklad 5 kolumn,
 - edycje nazw kolumn,
 - dodawanie i usuwanie kart,
-- przenoszenie kart drag-and-drop.
+- przenoszenie kart drag-and-drop,
+- panel boczny czatu AI do wysylania komend.
 
-Na tym etapie frontend ma trwaly zapis przez backend API, ale nadal nie ma backendowej autoryzacji.
+Na tym etapie frontend ma trwaly zapis przez backend API i czat AI, ale nadal nie ma backendowej autoryzacji.
 
 ## Stack i narzedzia
 
@@ -32,13 +33,15 @@ Na tym etapie frontend ma trwaly zapis przez backend API, ale nadal nie ma backe
 Komponent-klient zarzadzajacy stanem tablicy:
 - laduje tablice z backendu (`GET /api/kanban/user`),
 - synchronizuje zmiany tablicy do backendu (`PUT /api/kanban/user`),
+- wysyla zapytania AI do backendu (`POST /api/ai/chat/user`),
 - trzyma lokalny stan `board` (`columns` + `cards`) jako stan roboczy,
 - obsluguje drag-and-drop (start/koniec),
 - obsluguje zmiane nazwy kolumny,
 - obsluguje dodanie i usuniecie karty,
 - renderuje `KanbanColumn` dla kazdej kolumny,
 - renderuje `DragOverlay` z `KanbanCardPreview`,
-- pokazuje minimalna obsluge bledow sieci (load/sync).
+- renderuje panel `AiSidebarChat` z historia rozmowy,
+- pokazuje minimalna obsluge bledow sieci (load/sync/chat).
 
 ### `src/components/AuthGate.tsx`
 
@@ -70,6 +73,12 @@ Prosty klient API do:
 - zapisu tablicy po username,
 - mapowania odpowiedzi bledow backendu.
 
+### `src/lib/aiChatApi.ts`
+
+Klient API do:
+- wysylania pytania i historii rozmowy do backendu AI,
+- odbioru odpowiedzi AI (`message`) oraz zaktualizowanej tablicy (`board`).
+
 ## Komponenty UI
 
 - `src/components/KanbanColumn.tsx`:
@@ -86,6 +95,10 @@ Prosty klient API do:
   - walidacja: tytul wymagany.
 - `src/components/KanbanCardPreview.tsx`:
   - podglad karty podczas przeciagania.
+- `src/components/AiSidebarChat.tsx`:
+  - historia rozmowy user/assistant,
+  - formularz wysylki zapytania,
+  - obsluga bledow i stanu wysylki.
 
 ## Testy i konfiguracja testowa
 
@@ -93,6 +106,7 @@ Prosty klient API do:
 - `src/lib/auth.test.ts`: testy walidacji danych logowania.
 - `src/lib/kanbanApi.test.ts`: testy klienta API tablicy.
 - `src/components/KanbanBoard.test.tsx`: render kolumn, zmiana nazwy, dodanie/usuniecie karty.
+- `src/components/KanbanBoard.test.tsx`: dodatkowo testy wysylki czatu i aktualizacji tablicy po odpowiedzi AI.
 - `tests/kanban.spec.ts`: logowanie, wylogowanie, smoke tablicy, operacje kart.
 - `vitest.config.ts`: jsdom, setup testow, alias `@`.
 - `playwright.config.ts`: uruchamia lokalny serwer Next.js podczas testow.
@@ -109,8 +123,8 @@ Prosty klient API do:
 ## Stan obecny i ograniczenia
 
 - Dane tablicy pochodza z backendu i sa synchronizowane przez API.
+- Czat AI dziala w panelu bocznym i komunikuje sie z backendem AI.
 - Logowanie jest tylko frontendowe (token w `localStorage`), bez bezpieczenstwa produkcyjnego.
-- Brak panelu czatu AI.
 
 ## Wskazowki dla kolejnych etapow
 
