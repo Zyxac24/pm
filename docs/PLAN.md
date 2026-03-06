@@ -1,37 +1,37 @@
-# High level steps for project
+# Główne etapy projektu
 
-Part 1: Plan
+Część 1: Planowanie
 
-Enrich this document to plan out each of these parts in detail, with substeps listed out as a checklist to be checked off by the agent, and with tests and success critieria for each. Also create an AGENTS.md file inside the frontend directory that describes the existing code there. Ensure the user checks and approves the plan.
+Rozbuduj ten dokument, planując szczegółowo każdy z etapów, z podpunktami ujętymi jako lista kontrolna do odznaczania przez agenta, wraz z testami i kryteriami sukcesu dla każdego z nich. Utwórz także plik AGENTS.md w katalogu frontend, opisujący istniejący tam kod. Upewnij się, że użytkownik sprawdzi i zaakceptuje plan.
 
-Part 2: Scaffolding
+Część 2: Szkielet projektu
 
-Set up the Docker infrastructure, the backend in backend/ with FastAPI, and write the start and stop scripts in the scripts/ directory. This should serve example static HTML to confirm that a 'hello world' example works running locally and also make an API call.
+Skonfiguruj infrastrukturę Dockera, backend w katalogu backend/ za pomocą FastAPI oraz napisz skrypty uruchamiania i zatrzymywania w katalogu scripts/. Powinno to serwować przykładowy statyczny HTML, aby potwierdzić działanie przykładu "hello world" uruchamianego lokalnie oraz umożliwić wykonanie zapytania do API.
 
-Part 3: Add in Frontend
+Część 3: Dodanie frontendu
 
-Now update so that the frontend is statically built and served, so that the app has the demo Kanban board displayed at /. Comprehensive unit and integration tests.
+Zaktualizuj projekt tak, aby frontend był statycznie budowany i serwowany, tak aby aplikacja wyświetlała demo tablicy Kanban na ścieżce /. Pełne testy jednostkowe oraz integracyjne.
 
-Part 4: Add in a fake user sign in experience
+Część 4: Dodanie fikcyjnego logowania użytkownika
 
-Now update so that on first hitting /, you need to log in with dummy credentials ("user", "password") in order to see the Kanban, and you can log out. Comprehensive tests.
+Zaktualizuj aplikację tak, aby po wejściu na / wymagane było zalogowanie przy użyciu przykładowych danych ("user", "password"), by zobaczyć tablicę Kanban, oraz możliwość wylogowania. Pełne testy.
 
-Part 5: Database modeling
+Część 5: Modelowanie bazy danych
 
-Now propose a database schema for the Kanban, saving it as JSON. Document the database approach in docs/ and get user sign off.
+Zaproponuj schemat bazy danych dla Kanbana, zapisując dane jako JSON. Udokumentuj podejście do bazy w katalogu docs/ i uzyskaj akceptację użytkownika.
 
-Part 6: Backend
+Część 6: Backend
 
-Now add API routes to allow the backend to read and change the Kanban for a given user; test this thoroughly with backend unit tests. The database should be created if it doesn't exist.
+Dodaj trasy API pozwalające backendowi odczytać oraz modyfikować tablicę Kanban dla danego użytkownika; dokładnie przetestuj za pomocą testów jednostkowych backendu. Baza danych powinna być tworzona, jeśli nie istnieje.
 
-Part 7: Frontend + Backend
+Część 7: Frontend + Backend
 
-Now have the frontend actually use the backend API, so that the app is a proper persistent Kanban board. Test very throughly.
+Połącz frontend z backendem tak, aby aplikacja stanowiła trwałą tablicę Kanban. Przeprowadź bardzo dokładne testy.
 
-Part 8: AI connectivity
+Część 8: Połączenie z AI
 
-Now allow the backend to make an AI call via OpenRouter. Test connectivity with a simple "2+2" test and ensure the AI call is working.
+Pozwól backendowi wykonywać zapytania do AI przez OpenRouter. Przetestuj połączenie prostym testem "2+2" i upewnij się, że połączenie działa.
 
-Part 9: Now extend the backend call so that it always calls the AI with the JSON of the Kanban board, plus the user's question (and conversation history). The AI should respond with Structured Outputs that includes the response to the user and optionaly an update to the Kanban. Test thoroughly.
+Część 9: Rozszerzenie połączenia z AI w backendzie, tak by zawsze przekazywać do AI JSON tablicy Kanban, pytanie użytkownika (oraz historię rozmowy). AI powinno odpowiadać w formie Structured Outputs, zawierającej odpowiedź dla użytkownika oraz opcjonalnie aktualizację tablicy Kanban. Dokładnie przetestuj.
 
-Part 10: Now add a beautiful sidebar widget to the UI supporting full AI chat, and allowing the LLM (as it determines) to update the Kanban based on its Structured Outputs. If the AI updates the Kanban, then the UI should refresh automatically.
+Część 10: Dodaj nowoczesny panel boczny do interfejsu wspierający pełny czat z AI, umożliwiając LLM, w zależności od potrzeby, aktualizację Kanbana na podstawie odpowiedzi w Structured Outputs. Jeśli AI zaktualizuje Kanban, UI powinno automatycznie się odświeżyć.

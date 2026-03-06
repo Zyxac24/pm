@@ -1,53 +1,53 @@
-# The Project Management MVP web app
+# MVP aplikacji do zarządzania projektami
 
-## Business Requirements
+## Wymagania biznesowe
 
-This project is building a Project Management App. Key features:
-- A user can sign in
-- When signed in, the user sees a Kanban board representing their project
-- The Kanban board has fixed columns that can be renamed
-- The cards on the Kanban board can be moved with drag and drop, and edited
-- There is an AI chat feature in a sidebar; the AI is able to create / edit / move one or more cards
+Ten projekt polega na stworzeniu aplikacji do zarządzania projektami. Kluczowe funkcje:
+- Użytkownik może się zalogować
+- Po zalogowaniu użytkownik widzi tablicę Kanban reprezentującą jego projekt
+- Tablica Kanban ma stałe kolumny, które można przemianować
+- Karty na tablicy Kanban można przenosić metodą przeciągnij i upuść oraz edytować
+- W pasku bocznym dostępny jest czat AI; AI potrafi tworzyć, edytować oraz przenosić jedną lub więcej kart
 
-## Limitations
+## Ograniczenia
 
-For the MVP, there will only be a user sign in (hardcoded to 'user' and 'password') but the database will support multiple users for future.
+W MVP będzie tylko jedno logowanie użytkownika (na stałe: ‘user’ i ‘password’), ale baza danych będzie wspierać wielu użytkowników w przyszłości.
 
-For the MVP, there will only be 1 Kanban board per signed in user.
+W MVP dozwolona będzie tylko jedna tablica Kanban na zalogowanego użytkownika.
 
-For the MVP, this will run locally (in a docker container)
+W MVP wszystko będzie działać lokalnie (w kontenerze Dockera)
 
-## Technical Decisions
+## Decyzje techniczne
 
-- NextJS frontend
-- Python FastAPI backend, including serving the static NextJS site at /
-- Everything packaged into a Docker container
-- Use "uv" as the package manager for python in the Docker container
-- Use OpenRouter for the AI calls. An OPENROUTER_API_KEY is in .env in the project root
-- Use `openai/gpt-oss-120b` as the model
-- Use SQLLite local database for the database, creating a new db if it doesn't exist
-- Start and Stop server scripts for Mac, PC, Linux in scripts/
+- Frontend NextJS
+- Backend Python FastAPI, wraz z obsługą statycznej strony NextJS na /
+- Wszystko spakowane w jeden kontener Dockera
+- Jako menedżer pakietów Pythona w kontenerze używamy "uv"
+- Do wywołań AI wykorzystujemy OpenRouter. Klucz OPENROUTER_API_KEY znajduje się w pliku .env w katalogu głównym projektu
+- Używamy modelu `openai/gpt-oss-120b`
+- Lokalna baza danych SQLLite; baza tworzona, jeśli nie istnieje
+- Skrypty uruchamiania i zatrzymywania serwera dla Mac, PC, Linux w scripts/
 
-## Starting Point
+## Punkt startowy
 
-A working MVP of the frontend has been built and is already in frontend. This is not yet designed for the Docker setup. It's a pure frontend-only demo.
+Działający MVP frontendu jest już dostępny w katalogu frontend. Nie jest jeszcze przystosowany do pracy w Dockerze. To czysta demonstracja frontendu.
 
-## Color Scheme
+## Schemat kolorów
 
-- Accent Yellow: `#ecad0a` - accent lines, highlights
-- Blue Primary: `#209dd7` - links, key sections
-- Purple Secondary: `#753991` - submit buttons, important actions
-- Dark Navy: `#032147` - main headings
-- Gray Text: `#888888` - supporting text, labels
+- Żółty akcent: `#ecad0a` — linie akcentujące, wyróżnienia
+- Niebieski główny: `#209dd7` — linki, kluczowe sekcje
+- Fioletowy wtórny: `#753991` — przyciski przesyłania, ważne akcje
+- Ciemny granat: `#032147` — główne nagłówki
+- Szary tekst: `#888888` — tekst pomocniczy, etykiety
 
-## Coding standards
+## Standardy kodowania
 
-1. Use latest versions of libraries and idiomatic approaches as of today
-2. Keep it simple - NEVER over-engineer, ALWAYS simplify, NO unnecessary defensive programming. No extra features - focus on simplicity.
-3. Be concise. Keep README minimal. IMPORTANT: no emojis ever
-4. When hitting issues, always identify root cause before trying a fix. Do not guess. Prove with evidence, then fix the root cause.
+1. Używaj najnowszych wersji bibliotek i zgodnych ze współczesnymi standardów.
+2. Zachowuj prostotę — NIGDY nie przekombinuj, ZAWSZE upraszczaj, NIE stosuj zbędnej defensywności. Bez dodatkowych funkcji — skup się na prostocie.
+3. Bądź zwięzły. README ma być minimalistyczny. WAŻNE: żadnych emoji.
+4. W przypadku problemów zawsze identyfikuj przyczynę przed próbą naprawy. Nie zgaduj. Najpierw znajdź dowód, potem napraw przyczynę.
 
-## Working documentation
+## Dokumentacja robocza
 
-All documents for planning and executing this project will be in the docs/ directory.
-Please review the docs/PLAN.md document before proceeding.
+Wszystkie dokumenty do planowania i realizacji projektu będą w katalogu docs/.
+Proszę zapoznać się z dokumentem docs/PLAN.md przed rozpoczęciem pracy.
