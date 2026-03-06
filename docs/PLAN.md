@@ -6,6 +6,16 @@
 - [ ] Start kolejnej części tylko po uprzedniej akceptacji użytkownika.
 - [ ] W każdym etapie wykonujemy realistyczne minimum testów (bez nadmiernej rozbudowy).
 - [ ] W przypadku problemu najpierw znajdujemy przyczynę i dowód, dopiero potem naprawa.
+- [ ] Dążymy do 80% pokrycia testami dla rozwijanego kodu, ale nie traktujemy tego jako twardego blokera.
+- [ ] Priorytet: testy wartościowe dla ryzyk i kluczowych scenariuszy, nie sztuczne testy "pod licznik".
+- [ ] Jeśli 80% nie zostanie osiągnięte, dokumentujemy brakujące obszary i uzasadnienie.
+
+## Strategia testów i pokrycia
+
+- [ ] Każdy etap zawiera minimum: testy jednostkowe logiki krytycznej + co najmniej jeden test integracyjny/E2E dla głównego przepływu.
+- [ ] Pokrycie mierzymy regularnie podczas etapów implementacyjnych (frontend/backend) i raportujemy wynik po etapie.
+- [ ] Dodatkowe testy dopisujemy tam, gdzie zmniejszają ryzyko regresji lub chronią ważny kontrakt API/UI.
+- [ ] Nie dodajemy testów niskiej wartości tylko po to, by sztucznie podbić pokrycie.
 
 ## Część 1: Planowanie
 
@@ -96,6 +106,7 @@
 - [ ] Przechowywać dane tablicy w JSON.
 - [ ] Udokumentować schemat i decyzje w `docs/`.
 - [ ] Uzyskać akceptację użytkownika przed implementacją API danych.
+- [ ] Dokument referencyjny schematu: `docs/DATABASE_SCHEMA.md`.
 
 ### Testy (realistyczne minimum)
 

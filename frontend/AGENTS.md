@@ -3,12 +3,13 @@
 ## Cel
 
 Frontend jest samodzielnym demo tablicy Kanban. Pokazuje:
+- ekran logowania dla `/` z danymi demo (`user` / `password`),
 - staly uklad 5 kolumn,
 - edycje nazw kolumn,
 - dodawanie i usuwanie kart,
 - przenoszenie kart drag-and-drop.
 
-Na tym etapie frontend nie ma logowania, backendu ani trwalego zapisu danych.
+Na tym etapie frontend nie ma backendowej autoryzacji ani trwalego zapisu danych.
 
 ## Stack i narzedzia
 
@@ -36,6 +37,14 @@ Komponent-klient zarzadzajacy stanem tablicy:
 - renderuje `KanbanColumn` dla kazdej kolumny,
 - renderuje `DragOverlay` z `KanbanCardPreview`.
 
+### `src/components/AuthGate.tsx`
+
+Komponent-klient odpowiedzialny za dostep:
+- sprawdza token w `localStorage`,
+- pokazuje formularz logowania dla nieautoryzowanego uzytkownika,
+- po poprawnych danych (`user` / `password`) zapisuje token i pokazuje tablice,
+- obsluguje wylogowanie (usuniecie tokenu).
+
 ### `src/lib/kanban.ts`
 
 Definicje modelu i logika pomocnicza:
@@ -43,6 +52,13 @@ Definicje modelu i logika pomocnicza:
 - `initialData` z 5 kolumnami i przykladowymi kartami,
 - `moveCard(...)` do re-order i move miedzy kolumnami,
 - `createId(...)` do generowania id nowych kart.
+
+### `src/lib/auth.ts`
+
+Definicje logowania demo:
+- stale z loginem i haslem,
+- klucz i wartosc tokenu frontendowego,
+- `validateCredentials(...)` do walidacji danych logowania.
 
 ## Komponenty UI
 
@@ -64,8 +80,9 @@ Definicje modelu i logika pomocnicza:
 ## Testy i konfiguracja testowa
 
 - `src/lib/kanban.test.ts`: testy funkcji `moveCard`.
+- `src/lib/auth.test.ts`: testy walidacji danych logowania.
 - `src/components/KanbanBoard.test.tsx`: render kolumn, zmiana nazwy, dodanie/usuniecie karty.
-- `tests/kanban.spec.ts`: smoke E2E, dodanie karty, przeniesienie karty miedzy kolumnami.
+- `tests/kanban.spec.ts`: logowanie, wylogowanie, smoke tablicy, operacje kart.
 - `vitest.config.ts`: jsdom, setup testow, alias `@`.
 - `playwright.config.ts`: uruchamia lokalny serwer Next.js podczas testow.
 
@@ -81,7 +98,7 @@ Definicje modelu i logika pomocnicza:
 ## Stan obecny i ograniczenia
 
 - Dane tablicy sa tylko w pamieci (reset po odswiezeniu).
-- Brak autoryzacji i tokenow.
+- Logowanie jest tylko frontendowe (token w `localStorage`), bez bezpieczenstwa produkcyjnego.
 - Brak integracji z backend API.
 - Brak panelu czatu AI.
 
