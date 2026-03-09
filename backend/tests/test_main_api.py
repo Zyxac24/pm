@@ -8,7 +8,12 @@ from fastapi.testclient import TestClient
 
 from app.ai_client import OPENROUTER_MODEL, OpenRouterRequestError, OpenRouterSchemaError
 from app.main import create_app
-from app.models import AiAssistantResponseModel, AiBoardPatchModel, AiPatchOperationModel
+from app.models import (
+    AiAssistantResponseModel,
+    AiBoardPatchModel,
+    AiPatchOperationModel,
+    MAX_PATCH_OPERATIONS,
+)
 
 
 class MainApiTests(unittest.TestCase):
@@ -207,6 +212,57 @@ class MainApiTests(unittest.TestCase):
             self.assertEqual(
                 read_response.json()["columns"][0]["title"],
                 "Stored",
+            )
+
+    def test_invalid_username_pattern_returns_validation_error(self) -> None:
+        with TestClient(create_app()) as client:
+            # Uppercase letters and path traversal don't match ^[a-z0-9_-]{1,32}$
+            response = client.get("/api/kanban/InvalidUser")
+            self.assertEqual(response.status_code, 422)
+
+            response = client.put("/api/kanban/has.dot", json={})
+            self.assertEqual(response.status_code, 422)
+
+    @patch(
+        "app.main.run_structured_kanban_chat",
+        return_value=AiAssistantResponseModel(
+            message="I tried to move a card.",
+            patch=AiBoardPatchModel(
+                operations=[
+                    AiPatchOperationModel(
+                        op="move_card",
+                        cardId="card-1",
+                        targetColumnId="col-nonexistent",
+                    ),
+                ]
+            ),
+        ),
+    )
+    def test_ai_chat_returns_message_when_patch_fails(self, _: object) -> None:
+        with TestClient(create_app()) as client:
+            response = client.post(
+                "/api/ai/chat/user",
+                json={"question": "Move a card.", "history": []},
+            )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["message"], "I tried to move a card.")
+        self.assertFalse(payload["patchApplied"])
+        self.assertEqual(len(payload["board"]["columns"]), 5)
+
+    def test_patch_model_rejects_more_than_max_operations(self) -> None:
+        from pydantic import ValidationError
+
+        with self.assertRaises(ValidationError):
+            AiBoardPatchModel(
+                operations=[
+                    AiPatchOperationModel(
+                        op="create_card",
+                        columnId="col-backlog",
+                        title=f"Card {i}",
+                    )
+                    for i in range(MAX_PATCH_OPERATIONS + 1)
+                ]
             )
 
     def test_missing_user_returns_not_found(self) -> None:

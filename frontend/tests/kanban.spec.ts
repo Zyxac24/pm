@@ -41,6 +41,43 @@ test("adds a card to a column", async ({ page }) => {
   await expect(firstColumn.getByText("Playwright card")).toBeVisible();
 });
 
+const EMPTY_BOARD = {
+  columns: [
+    { id: "col-backlog", title: "Backlog", cardIds: [] },
+    { id: "col-discovery", title: "Discovery", cardIds: [] },
+    { id: "col-progress", title: "In Progress", cardIds: [] },
+    { id: "col-review", title: "Review", cardIds: [] },
+    { id: "col-done", title: "Done", cardIds: [] },
+  ],
+  cards: {},
+};
+
+test("sends a message to AI sidebar and receives a response", async ({ page }) => {
+  await page.route("**/api/kanban/**", (route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(EMPTY_BOARD) })
+  );
+  await page.route("**/api/ai/chat/**", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        message: "Board looks great, no changes needed.",
+        patchApplied: false,
+        board: EMPTY_BOARD,
+      }),
+    })
+  );
+
+  await login(page);
+
+  const chatInput = page.getByLabel("AI message input");
+  await chatInput.fill("How is my board?");
+  await page.getByRole("button", { name: /send/i }).click();
+
+  await expect(page.getByText("How is my board?")).toBeVisible();
+  await expect(page.getByText("Board looks great, no changes needed.")).toBeVisible();
+});
+
 test("moves a card between columns", async ({ page }) => {
   await login(page);
   const card = page.getByTestId("card-card-1");

@@ -175,8 +175,9 @@ class KanbanRepository:
         return board
 
     def _connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self.db_path)
+        connection = sqlite3.connect(self.db_path, timeout=2.0)
         connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA journal_mode = WAL;")
         connection.execute("PRAGMA foreign_keys = ON;")
         return connection
 

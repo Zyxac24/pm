@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -28,6 +28,7 @@ export const KanbanBoard = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatError, setChatError] = useState<string | null>(null);
   const [isChatSending, setIsChatSending] = useState(false);
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadBoard = async () => {
     setIsLoading(true);
@@ -36,7 +37,8 @@ export const KanbanBoard = () => {
       const remoteBoard = await fetchBoard(DEMO_USERNAME);
       setBoard(remoteBoard);
       setSyncError(null);
-    } catch {
+    } catch (error) {
+      console.error("Failed to load board:", error);
       setBoard(initialData);
       setLoadError("Could not load board from backend. Showing local snapshot.");
     } finally {
@@ -72,7 +74,10 @@ export const KanbanBoard = () => {
         return previous;
       }
       const next = updater(previous);
-      void persistBoard(next);
+      if (persistTimerRef.current) {
+        clearTimeout(persistTimerRef.current);
+      }
+      persistTimerRef.current = setTimeout(() => void persistBoard(next), 500);
       return next;
     });
   };
@@ -182,7 +187,8 @@ export const KanbanBoard = () => {
           content: aiResult.message,
         },
       ]);
-    } catch {
+    } catch (error) {
+      console.error("AI chat failed:", error);
       setChatError("Could not get AI response from backend.");
     } finally {
       setIsChatSending(false);

@@ -124,6 +124,9 @@ class AiPatchOperationModel(BaseModel):
         return self
 
 
+MAX_PATCH_OPERATIONS = 50
+
+
 class AiBoardPatchModel(BaseModel):
     operations: list[AiPatchOperationModel]
 
@@ -131,6 +134,10 @@ class AiBoardPatchModel(BaseModel):
     def validate_operations(self) -> "AiBoardPatchModel":
         if not self.operations:
             raise ValueError("Patch operations cannot be empty.")
+        if len(self.operations) > MAX_PATCH_OPERATIONS:
+            raise ValueError(
+                f"Patch cannot contain more than {MAX_PATCH_OPERATIONS} operations."
+            )
         return self
 
 
