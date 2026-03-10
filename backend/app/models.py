@@ -12,6 +12,34 @@ FIXED_COLUMN_IDS: tuple[str, ...] = (
 )
 
 
+# --- User management models ---
+
+
+class UserRegisterRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=32, pattern=r"^[a-z0-9_-]+$")
+    password: str = Field(min_length=4, max_length=128)
+
+
+class UserLoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class UserLoginResponse(BaseModel):
+    token: str
+    username: str
+    user_id: int
+
+
+class UserProfileResponse(BaseModel):
+    user_id: int
+    username: str
+    created_at: str
+
+
+# --- Board models ---
+
+
 class CardModel(BaseModel):
     id: str
     title: str
@@ -55,6 +83,75 @@ class BoardModel(BaseModel):
                 seen_card_ids.add(card_id)
 
         return self
+
+
+class FlexibleBoardModel(BaseModel):
+    """Board model without fixed column constraints - for user-created boards."""
+    columns: list[ColumnModel]
+    cards: dict[str, CardModel]
+
+    @model_validator(mode="after")
+    def validate_board_integrity(self) -> "FlexibleBoardModel":
+        card_keys = set(self.cards.keys())
+        seen_card_ids: set[str] = set()
+        actual_column_ids = {column.id for column in self.columns}
+
+        if len(self.columns) < 1:
+            raise ValueError("Board must have at least one column.")
+        if len(self.columns) > 20:
+            raise ValueError("Board cannot have more than 20 columns.")
+        if len(actual_column_ids) != len(self.columns):
+            raise ValueError("Board columns must have unique identifiers.")
+
+        for card_key, card in self.cards.items():
+            if card.id != card_key:
+                raise ValueError("Card id must match the key in cards map.")
+
+        for column in self.columns:
+            for card_id in column.cardIds:
+                if card_id not in card_keys:
+                    raise ValueError("Column references a card that does not exist.")
+                if card_id in seen_card_ids:
+                    raise ValueError("Card cannot appear in multiple columns.")
+                seen_card_ids.add(card_id)
+
+        return self
+
+
+# --- Board management models ---
+
+
+class BoardCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    description: str = Field(default="", max_length=500)
+
+
+class BoardUpdateMetaRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    description: str = Field(default="", max_length=500)
+
+
+class BoardSummaryResponse(BaseModel):
+    board_id: int
+    name: str
+    description: str
+    updated_at: str
+    column_count: int
+    card_count: int
+
+
+class BoardListResponse(BaseModel):
+    boards: list[BoardSummaryResponse]
+
+
+class BoardDetailResponse(BaseModel):
+    board_id: int
+    name: str
+    description: str
+    board: FlexibleBoardModel
+
+
+# --- AI models ---
 
 
 class AiTestResponseModel(BaseModel):
@@ -155,4 +252,4 @@ class AiAssistantResponseModel(BaseModel):
 class AiChatResponseModel(BaseModel):
     message: str
     patchApplied: bool
-    board: BoardModel
+    board: FlexibleBoardModel

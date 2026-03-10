@@ -11,16 +11,21 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { DEMO_USERNAME } from "@/lib/auth";
 import { AiSidebarChat, type ChatMessage } from "@/components/AiSidebarChat";
 import { KanbanColumn } from "@/components/KanbanColumn";
 import { KanbanCardPreview } from "@/components/KanbanCardPreview";
-import { createId, initialData, moveCard, type BoardData } from "@/lib/kanban";
-import { sendAiChat } from "@/lib/aiChatApi";
-import { fetchBoard, saveBoard } from "@/lib/kanbanApi";
+import { createId, moveCard, type BoardData } from "@/lib/kanban";
+import { sendAiChatForBoard } from "@/lib/aiChatApi";
+import { getBoard, updateBoardData } from "@/lib/boardsApi";
 
-export const KanbanBoard = () => {
+type KanbanBoardProps = {
+  boardId: number;
+  onBack: () => void;
+};
+
+export const KanbanBoard = ({ boardId, onBack }: KanbanBoardProps) => {
   const [board, setBoard] = useState<BoardData | null>(null);
+  const [boardName, setBoardName] = useState("");
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -34,13 +39,13 @@ export const KanbanBoard = () => {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const remoteBoard = await fetchBoard(DEMO_USERNAME);
-      setBoard(remoteBoard);
+      const result = await getBoard(boardId);
+      setBoard(result.board);
+      setBoardName(result.name);
       setSyncError(null);
     } catch (error) {
       console.error("Failed to load board:", error);
-      setBoard(initialData);
-      setLoadError("Could not load board from backend. Showing local snapshot.");
+      setLoadError("Could not load board from backend.");
     } finally {
       setIsLoading(false);
     }
@@ -48,7 +53,7 @@ export const KanbanBoard = () => {
 
   useEffect(() => {
     void loadBoard();
-  }, []);
+  }, [boardId]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -60,8 +65,8 @@ export const KanbanBoard = () => {
 
   const persistBoard = async (nextBoard: BoardData) => {
     try {
-      const savedBoard = await saveBoard(DEMO_USERNAME, nextBoard);
-      setBoard(savedBoard);
+      const result = await updateBoardData(boardId, nextBoard);
+      setBoard(result.board);
       setSyncError(null);
     } catch {
       setSyncError("Could not sync latest changes with backend.");
@@ -176,7 +181,7 @@ export const KanbanBoard = () => {
     ]);
 
     try {
-      const aiResult = await sendAiChat(DEMO_USERNAME, question, history);
+      const aiResult = await sendAiChatForBoard(boardId, question, history);
       setBoard(aiResult.board);
       setSyncError(null);
       setChatMessages((previous) => [
@@ -198,7 +203,9 @@ export const KanbanBoard = () => {
   if (isLoading || !board) {
     return (
       <main className="mx-auto flex min-h-screen max-w-xl items-center justify-center px-6">
-        <p className="text-sm text-[var(--gray-text)]">Loading board...</p>
+        <p className="text-sm text-[var(--gray-text)]">
+          {loadError || "Loading board..."}
+        </p>
       </main>
     );
   }
@@ -214,23 +221,27 @@ export const KanbanBoard = () => {
         <header className="flex flex-col gap-6 rounded-[32px] border border-[var(--stroke)] bg-white/80 p-8 shadow-[var(--shadow)] backdrop-blur">
           <div className="flex flex-wrap items-start justify-between gap-6">
             <div>
+              <button
+                type="button"
+                onClick={onBack}
+                className="mb-2 rounded-full border border-[var(--stroke)] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--gray-text)] transition hover:text-[var(--navy-dark)]"
+              >
+                &larr; All Boards
+              </button>
               <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[var(--gray-text)]">
-                Single Board Kanban
+                Kanban Board
               </p>
               <h1 className="mt-3 font-display text-4xl font-semibold text-[var(--navy-dark)]">
-                Kanban Studio
+                {boardName}
               </h1>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--gray-text)]">
-                Keep momentum visible. Rename columns, drag cards between stages,
-                and capture quick notes without getting buried in settings.
-              </p>
             </div>
             <div className="rounded-2xl border border-[var(--stroke)] bg-[var(--surface)] px-5 py-4">
               <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--gray-text)]">
-                Focus
+                Stats
               </p>
               <p className="mt-2 text-lg font-semibold text-[var(--primary-blue)]">
-                One board. Five columns. Zero clutter.
+                {board.columns.length} columns &middot;{" "}
+                {Object.keys(board.cards).length} cards
               </p>
             </div>
           </div>
@@ -272,7 +283,12 @@ export const KanbanBoard = () => {
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
-              <section className="grid gap-6 lg:grid-cols-5">
+              <section
+                className="grid gap-6"
+                style={{
+                  gridTemplateColumns: `repeat(${Math.min(board.columns.length, 5)}, minmax(0, 1fr))`,
+                }}
+              >
                 {board.columns.map((column) => (
                   <KanbanColumn
                     key={column.id}

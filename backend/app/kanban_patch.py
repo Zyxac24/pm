@@ -2,7 +2,7 @@ from copy import deepcopy
 from typing import Any
 from uuid import uuid4
 
-from app.models import AiBoardPatchModel, BoardModel
+from app.models import AiBoardPatchModel, FlexibleBoardModel
 
 
 class AiPatchError(Exception):
@@ -10,7 +10,7 @@ class AiPatchError(Exception):
 
 
 def apply_ai_patch(board: dict[str, Any], patch: AiBoardPatchModel) -> dict[str, Any]:
-    validated_board = BoardModel.model_validate(board).model_dump(mode="json")
+    validated_board = FlexibleBoardModel.model_validate(board).model_dump(mode="json")
     next_board = deepcopy(validated_board)
     columns = next_board["columns"]
     cards = next_board["cards"]
@@ -70,7 +70,7 @@ def apply_ai_patch(board: dict[str, Any], patch: AiBoardPatchModel) -> dict[str,
 
         raise AiPatchError(f"Unsupported patch operation '{operation.op}'.")
 
-    return BoardModel.model_validate(next_board).model_dump(mode="json")
+    return FlexibleBoardModel.model_validate(next_board).model_dump(mode="json")
 
 
 def _find_column(columns: list[dict[str, Any]], column_id: str | None) -> dict[str, Any] | None:

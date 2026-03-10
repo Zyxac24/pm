@@ -3,17 +3,25 @@ import userEvent from "@testing-library/user-event";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { initialData, type BoardData } from "@/lib/kanban";
 
-const jsonResponse = (payload: unknown) =>
+const jsonResponse = (payload: unknown, status = 200) =>
   new Response(JSON.stringify(payload), {
-    status: 200,
+    status,
     headers: { "Content-Type": "application/json" },
   });
+
+const boardDetail = (board: BoardData) => ({
+  board_id: 1,
+  name: "Test Board",
+  description: "",
+  board,
+});
 
 const getFirstColumn = async () => (await screen.findAllByTestId(/column-/i))[0];
 const cloneBoard = (board: BoardData) => JSON.parse(JSON.stringify(board)) as BoardData;
 
 describe("KanbanBoard", () => {
   let aiChatResponse: unknown;
+  const mockOnBack = vi.fn();
 
   beforeEach(() => {
     aiChatResponse = {
@@ -21,6 +29,16 @@ describe("KanbanBoard", () => {
       patchApplied: false,
       board: cloneBoard(initialData),
     };
+
+    // Mock localStorage for auth token
+    vi.stubGlobal("localStorage", {
+      getItem: vi.fn((key: string) => {
+        if (key === "kanban-auth-token") return "mock-jwt-token";
+        return null;
+      }),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+    });
 
     vi.stubGlobal(
       "fetch",
@@ -38,24 +56,40 @@ describe("KanbanBoard", () => {
         if (method === "PUT") {
           const parsedBody =
             typeof init?.body === "string" ? JSON.parse(init.body) : cloneBoard(initialData);
-          return jsonResponse(parsedBody);
+          return jsonResponse(boardDetail(parsedBody));
         }
-        return jsonResponse(cloneBoard(initialData));
+        // GET /api/boards/{id}
+        return jsonResponse(boardDetail(cloneBoard(initialData)));
       })
     );
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    mockOnBack.mockReset();
   });
 
-  it("renders five columns", async () => {
-    render(<KanbanBoard />);
+  it("renders columns from board", async () => {
+    render(<KanbanBoard boardId={1} onBack={mockOnBack} />);
     expect(await screen.findAllByTestId(/column-/i)).toHaveLength(5);
   });
 
+  it("shows back button", async () => {
+    render(<KanbanBoard boardId={1} onBack={mockOnBack} />);
+    await screen.findAllByTestId(/column-/i);
+    const backButton = screen.getByRole("button", { name: /all boards/i });
+    expect(backButton).toBeInTheDocument();
+  });
+
+  it("calls onBack when back button is clicked", async () => {
+    render(<KanbanBoard boardId={1} onBack={mockOnBack} />);
+    await screen.findAllByTestId(/column-/i);
+    await userEvent.click(screen.getByRole("button", { name: /all boards/i }));
+    expect(mockOnBack).toHaveBeenCalledOnce();
+  });
+
   it("renames a column", async () => {
-    render(<KanbanBoard />);
+    render(<KanbanBoard boardId={1} onBack={mockOnBack} />);
     const column = await getFirstColumn();
     const input = within(column).getByLabelText("Column title");
     await userEvent.clear(input);
@@ -64,7 +98,7 @@ describe("KanbanBoard", () => {
   });
 
   it("adds and removes a card", async () => {
-    render(<KanbanBoard />);
+    render(<KanbanBoard boardId={1} onBack={mockOnBack} />);
     const column = await getFirstColumn();
     const addButton = within(column).getByRole("button", {
       name: /add a card/i,
@@ -89,7 +123,7 @@ describe("KanbanBoard", () => {
   });
 
   it("edits a card title and details", async () => {
-    render(<KanbanBoard />);
+    render(<KanbanBoard boardId={1} onBack={mockOnBack} />);
     const column = await getFirstColumn();
     const firstCard = within(column).getByTestId("card-card-1");
 
@@ -112,7 +146,7 @@ describe("KanbanBoard", () => {
   });
 
   it("sends chat message and renders AI response", async () => {
-    render(<KanbanBoard />);
+    render(<KanbanBoard boardId={1} onBack={mockOnBack} />);
     await screen.findAllByTestId(/column-/i);
 
     const input = screen.getByLabelText("AI message input");
@@ -136,7 +170,7 @@ describe("KanbanBoard", () => {
       board: patchedBoard,
     };
 
-    render(<KanbanBoard />);
+    render(<KanbanBoard boardId={1} onBack={mockOnBack} />);
     await screen.findAllByTestId(/column-/i);
 
     const input = screen.getByLabelText("AI message input");
@@ -145,5 +179,10 @@ describe("KanbanBoard", () => {
 
     expect(await screen.findByRole("heading", { name: "Patched by AI" })).toBeInTheDocument();
     expect(screen.getByText("Patched details")).toBeInTheDocument();
+  });
+
+  it("displays board name in header", async () => {
+    render(<KanbanBoard boardId={1} onBack={mockOnBack} />);
+    expect(await screen.findByText("Test Board")).toBeInTheDocument();
   });
 });

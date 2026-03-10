@@ -89,7 +89,7 @@ class MainApiTests(unittest.TestCase):
     def test_ai_chat_returns_message_without_patch(self, _: object) -> None:
         with TestClient(create_app()) as client:
             response = client.post(
-                "/api/ai/chat/user",
+                "/api/ai/chat/legacy/user",
                 json={
                     "question": "What should I do next?",
                     "history": [{"role": "user", "content": "Help with planning."}],
@@ -135,7 +135,7 @@ class MainApiTests(unittest.TestCase):
     def test_ai_chat_applies_create_edit_move_patch(self, _: object) -> None:
         with TestClient(create_app()) as client:
             response = client.post(
-                "/api/ai/chat/user",
+                "/api/ai/chat/legacy/user",
                 json={"question": "Please update board.", "history": []},
             )
             self.assertEqual(response.status_code, 200)
@@ -171,7 +171,7 @@ class MainApiTests(unittest.TestCase):
     def test_ai_chat_returns_controlled_error_on_schema_failure(self, _: object) -> None:
         with TestClient(create_app()) as client:
             response = client.post(
-                "/api/ai/chat/user",
+                "/api/ai/chat/legacy/user",
                 json={"question": "Make updates", "history": []},
             )
 
@@ -241,7 +241,7 @@ class MainApiTests(unittest.TestCase):
     def test_ai_chat_returns_message_when_patch_fails(self, _: object) -> None:
         with TestClient(create_app()) as client:
             response = client.post(
-                "/api/ai/chat/user",
+                "/api/ai/chat/legacy/user",
                 json={"question": "Move a card.", "history": []},
             )
         self.assertEqual(response.status_code, 200)

@@ -2,13 +2,19 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { KanbanBoard } from "@/components/KanbanBoard";
+import { BoardSelector } from "@/components/BoardSelector";
 import {
   AUTH_TOKEN_KEY,
-  AUTH_TOKEN_VALUE,
-  validateCredentials,
+  clearSession,
+  getToken,
+  getUsername,
+  loginUser,
+  registerUser,
+  saveSession,
 } from "@/lib/auth";
 
 type AuthState = "checking" | "unauthenticated" | "authenticated";
+type AuthMode = "login" | "register";
 
 const initialFormState = {
   username: "",
@@ -17,37 +23,55 @@ const initialFormState = {
 
 export const AuthGate = () => {
   const [authState, setAuthState] = useState<AuthState>("checking");
+  const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [formState, setFormState] = useState(initialFormState);
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [username, setUsername] = useState<string | null>(null);
+  const [selectedBoardId, setSelectedBoardId] = useState<number | null>(null);
 
   useEffect(() => {
-    const token = window.localStorage.getItem(AUTH_TOKEN_KEY);
-    setAuthState(token === AUTH_TOKEN_VALUE ? "authenticated" : "unauthenticated");
+    const token = getToken();
+    if (token) {
+      setUsername(getUsername());
+      setAuthState("authenticated");
+    } else {
+      setAuthState("unauthenticated");
+    }
   }, []);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
-    if (!validateCredentials(formState.username, formState.password)) {
-      setError("Invalid credentials. Use user/password.");
-      return;
-    }
-
-    window.localStorage.setItem(AUTH_TOKEN_KEY, AUTH_TOKEN_VALUE);
     setError("");
-    setFormState(initialFormState);
-    setAuthState("authenticated");
+    setIsSubmitting(true);
+
+    try {
+      const response =
+        authMode === "login"
+          ? await loginUser(formState.username, formState.password)
+          : await registerUser(formState.username, formState.password);
+
+      saveSession(response);
+      setUsername(response.username);
+      setFormState(initialFormState);
+      setAuthState("authenticated");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Authentication failed.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleLogout = () => {
-    window.localStorage.removeItem(AUTH_TOKEN_KEY);
+    clearSession();
+    setSelectedBoardId(null);
     setAuthState("unauthenticated");
   };
 
   if (authState === "checking") {
     return (
       <main className="mx-auto flex min-h-screen max-w-xl items-center justify-center px-6">
-        <p className="text-sm text-[var(--gray-text)]">Loading login...</p>
+        <p className="text-sm text-[var(--gray-text)]">Loading...</p>
       </main>
     );
   }
@@ -55,7 +79,10 @@ export const AuthGate = () => {
   if (authState === "authenticated") {
     return (
       <>
-        <div className="mx-auto flex w-full max-w-[1500px] justify-end px-6 pt-6">
+        <div className="mx-auto flex w-full max-w-[1500px] items-center justify-between px-6 pt-6">
+          <p className="text-sm text-[var(--gray-text)]">
+            Signed in as <strong className="text-[var(--navy-dark)]">{username}</strong>
+          </p>
           <button
             type="button"
             onClick={handleLogout}
@@ -64,7 +91,14 @@ export const AuthGate = () => {
             Log out
           </button>
         </div>
-        <KanbanBoard />
+        {selectedBoardId ? (
+          <KanbanBoard
+            boardId={selectedBoardId}
+            onBack={() => setSelectedBoardId(null)}
+          />
+        ) : (
+          <BoardSelector onSelectBoard={setSelectedBoardId} />
+        )}
       </>
     );
   }
@@ -76,10 +110,16 @@ export const AuthGate = () => {
           Access
         </p>
         <h1 className="mt-3 font-display text-3xl font-semibold text-[var(--navy-dark)]">
-          Sign in to view your Kanban board
+          {authMode === "login" ? "Sign in" : "Create account"}
         </h1>
         <p className="mt-3 text-sm text-[var(--gray-text)]">
-          Use demo credentials: <strong>user</strong> / <strong>password</strong>
+          {authMode === "login" ? (
+            <>
+              Demo credentials: <strong>user</strong> / <strong>password</strong>
+            </>
+          ) : (
+            "Choose a username and password to get started."
+          )}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
@@ -105,8 +145,9 @@ export const AuthGate = () => {
               }
               type="password"
               className="mt-2 w-full rounded-xl border border-[var(--stroke)] bg-white px-3 py-2 text-sm text-[var(--navy-dark)] outline-none transition focus:border-[var(--primary-blue)]"
-              autoComplete="current-password"
+              autoComplete={authMode === "login" ? "current-password" : "new-password"}
               required
+              minLength={4}
             />
           </label>
 
@@ -116,12 +157,31 @@ export const AuthGate = () => {
             </p>
           ) : null}
 
-          <button
-            type="submit"
-            className="rounded-full bg-[var(--secondary-purple)] px-5 py-2 text-xs font-semibold uppercase tracking-wide text-white transition hover:brightness-110"
-          >
-            Log in
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="rounded-full bg-[var(--secondary-purple)] px-5 py-2 text-xs font-semibold uppercase tracking-wide text-white transition hover:brightness-110 disabled:opacity-50"
+            >
+              {isSubmitting
+                ? "Please wait..."
+                : authMode === "login"
+                  ? "Log in"
+                  : "Register"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode(authMode === "login" ? "register" : "login");
+                setError("");
+              }}
+              className="text-xs font-semibold text-[var(--primary-blue)] hover:underline"
+            >
+              {authMode === "login"
+                ? "Create an account"
+                : "Already have an account? Log in"}
+            </button>
+          </div>
         </form>
       </section>
     </main>
