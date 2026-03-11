@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { useState, type FormEvent } from "react";
 
 export type ChatMessage = {
   id: string;
@@ -15,12 +15,12 @@ type AiSidebarChatProps = {
   onSend: (question: string) => Promise<void>;
 };
 
-export const AiSidebarChat = ({
+export function AiSidebarChat({
   messages,
   isSending,
   error,
   onSend,
-}: AiSidebarChatProps) => {
+}: AiSidebarChatProps) {
   const [question, setQuestion] = useState("");
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -98,4 +98,4 @@ export const AiSidebarChat = ({
       </form>
     </aside>
   );
-};
+}

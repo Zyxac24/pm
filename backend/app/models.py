@@ -52,36 +52,45 @@ class ColumnModel(BaseModel):
     cardIds: list[str]
 
 
+def _validate_card_and_column_integrity(
+    columns: list[ColumnModel],
+    cards: dict[str, CardModel],
+) -> None:
+    """Shared validation for both fixed and flexible board models."""
+    actual_column_ids = {column.id for column in columns}
+    if len(actual_column_ids) != len(columns):
+        raise ValueError("Board columns must have unique identifiers.")
+
+    for card_key, card in cards.items():
+        if card.id != card_key:
+            raise ValueError("Card id must match the key in cards map.")
+
+    card_keys = set(cards.keys())
+    seen_card_ids: set[str] = set()
+    for column in columns:
+        for card_id in column.cardIds:
+            if card_id not in card_keys:
+                raise ValueError("Column references a card that does not exist.")
+            if card_id in seen_card_ids:
+                raise ValueError("Card cannot appear in multiple columns.")
+            seen_card_ids.add(card_id)
+
+
 class BoardModel(BaseModel):
     columns: list[ColumnModel]
     cards: dict[str, CardModel]
 
     @model_validator(mode="after")
     def validate_board_integrity(self) -> "BoardModel":
-        card_keys = set(self.cards.keys())
-        seen_card_ids: set[str] = set()
-        expected_column_ids = set(FIXED_COLUMN_IDS)
-        actual_column_ids = {column.id for column in self.columns}
-
         if len(self.columns) != len(FIXED_COLUMN_IDS):
             raise ValueError("Board must contain exactly five fixed columns.")
-        if len(actual_column_ids) != len(FIXED_COLUMN_IDS):
-            raise ValueError("Board columns must have unique identifiers.")
+
+        expected_column_ids = set(FIXED_COLUMN_IDS)
+        actual_column_ids = {column.id for column in self.columns}
         if actual_column_ids != expected_column_ids:
             raise ValueError("Board is missing one or more required fixed columns.")
 
-        for card_key, card in self.cards.items():
-            if card.id != card_key:
-                raise ValueError("Card id must match the key in cards map.")
-
-        for column in self.columns:
-            for card_id in column.cardIds:
-                if card_id not in card_keys:
-                    raise ValueError("Column references a card that does not exist.")
-                if card_id in seen_card_ids:
-                    raise ValueError("Card cannot appear in multiple columns.")
-                seen_card_ids.add(card_id)
-
+        _validate_card_and_column_integrity(self.columns, self.cards)
         return self
 
 
@@ -92,29 +101,12 @@ class FlexibleBoardModel(BaseModel):
 
     @model_validator(mode="after")
     def validate_board_integrity(self) -> "FlexibleBoardModel":
-        card_keys = set(self.cards.keys())
-        seen_card_ids: set[str] = set()
-        actual_column_ids = {column.id for column in self.columns}
-
         if len(self.columns) < 1:
             raise ValueError("Board must have at least one column.")
         if len(self.columns) > 20:
             raise ValueError("Board cannot have more than 20 columns.")
-        if len(actual_column_ids) != len(self.columns):
-            raise ValueError("Board columns must have unique identifiers.")
 
-        for card_key, card in self.cards.items():
-            if card.id != card_key:
-                raise ValueError("Card id must match the key in cards map.")
-
-        for column in self.columns:
-            for card_id in column.cardIds:
-                if card_id not in card_keys:
-                    raise ValueError("Column references a card that does not exist.")
-                if card_id in seen_card_ids:
-                    raise ValueError("Card cannot appear in multiple columns.")
-                seen_card_ids.add(card_id)
-
+        _validate_card_and_column_integrity(self.columns, self.cards)
         return self
 
 

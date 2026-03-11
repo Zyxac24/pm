@@ -1,18 +1,7 @@
 import type { BoardData } from "@/lib/kanban";
+import { getErrorMessage } from "@/lib/apiUtils";
 
-const getErrorMessage = async (response: Response) => {
-  try {
-    const payload = (await response.json()) as { detail?: string };
-    if (payload.detail) {
-      return payload.detail;
-    }
-  } catch {
-    // Ignore JSON parsing errors and fall back.
-  }
-  return `Request failed with status ${response.status}.`;
-};
-
-export const fetchBoard = async (username: string): Promise<BoardData> => {
+export async function fetchBoard(username: string): Promise<BoardData> {
   const response = await fetch(`/api/kanban/${encodeURIComponent(username)}`, {
     cache: "no-store",
   });
@@ -20,21 +9,19 @@ export const fetchBoard = async (username: string): Promise<BoardData> => {
     throw new Error(await getErrorMessage(response));
   }
   return (await response.json()) as BoardData;
-};
+}
 
-export const saveBoard = async (
+export async function saveBoard(
   username: string,
   board: BoardData
-): Promise<BoardData> => {
+): Promise<BoardData> {
   const response = await fetch(`/api/kanban/${encodeURIComponent(username)}`, {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(board),
   });
   if (!response.ok) {
     throw new Error(await getErrorMessage(response));
   }
   return (await response.json()) as BoardData;
-};
+}

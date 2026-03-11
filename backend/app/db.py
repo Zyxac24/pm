@@ -116,20 +116,6 @@ CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_boards_user_id ON kanban_boards(user_id);
 """
 
-MIGRATION_SQL = """
--- Add password_hash column if missing (migration from old schema)
-ALTER TABLE users ADD COLUMN password_hash TEXT NOT NULL DEFAULT '';
-
--- Add name column if missing
-ALTER TABLE kanban_boards ADD COLUMN name TEXT NOT NULL DEFAULT 'My Board';
-
--- Add description column if missing
-ALTER TABLE kanban_boards ADD COLUMN description TEXT NOT NULL DEFAULT '';
-
--- Drop unique constraint on user_id (allow multiple boards per user)
--- SQLite doesn't support DROP CONSTRAINT, so we handle this via schema recreation
-"""
-
 
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat()
@@ -143,7 +129,6 @@ class KanbanRepository:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
         with self._connect() as connection:
-            # Check if we need migration from old schema
             needs_migration = self._check_needs_migration(connection)
 
             if needs_migration:
@@ -151,7 +136,6 @@ class KanbanRepository:
             else:
                 connection.executescript(SCHEMA_SQL)
 
-            # Create demo user if not exists
             demo_hash = hash_password("password")
             existing = connection.execute(
                 "SELECT id, password_hash FROM users WHERE username = ?",
@@ -171,7 +155,6 @@ class KanbanRepository:
             if user_row is None:
                 raise RuntimeError("Failed to initialize demo user.")
 
-            # Create default board for demo user if they have none
             board_count = connection.execute(
                 "SELECT COUNT(*) as cnt FROM kanban_boards WHERE user_id = ?",
                 (user_row["id"],),
@@ -196,7 +179,7 @@ class KanbanRepository:
             "SELECT name FROM sqlite_master WHERE type='table' AND name='users'"
         ).fetchone()
         if tables is None:
-            return False  # Fresh database, no migration needed
+            return False
 
         columns = connection.execute("PRAGMA table_info(users)").fetchall()
         column_names = [col["name"] for col in columns]
@@ -204,18 +187,13 @@ class KanbanRepository:
 
     def _migrate_schema(self, connection: sqlite3.Connection) -> None:
         """Migrate from old schema (no auth, single board per user) to new."""
-        # Read existing data
         old_users = connection.execute("SELECT * FROM users").fetchall()
         old_boards = connection.execute("SELECT * FROM kanban_boards").fetchall()
 
-        # Drop old tables
         connection.execute("DROP TABLE IF EXISTS kanban_boards")
         connection.execute("DROP TABLE IF EXISTS users")
-
-        # Create new schema
         connection.executescript(SCHEMA_SQL)
 
-        # Re-insert users with default password hash
         demo_hash = hash_password("password")
         for user in old_users:
             connection.execute(
@@ -223,7 +201,6 @@ class KanbanRepository:
                 (user["id"], user["username"], demo_hash, user["created_at"]),
             )
 
-        # Re-insert boards with name
         for board in old_boards:
             connection.execute(
                 """
@@ -252,7 +229,6 @@ class KanbanRepository:
             )
             user_id = cursor.lastrowid
 
-            # Create a default board for the new user
             connection.execute(
                 """
                 INSERT INTO kanban_boards (user_id, name, description, board_json, updated_at, version)
@@ -298,6 +274,24 @@ class KanbanRepository:
 
     # --- Multi-board management ---
 
+    def _get_board_row(
+        self,
+        connection: sqlite3.Connection,
+        board_id: int,
+        user_id: int,
+        columns: str = "id, user_id, name, description, board_json, updated_at",
+    ) -> sqlite3.Row:
+        """Fetch a board row and verify ownership. Raises on not found or access denied."""
+        row = connection.execute(
+            f"SELECT {columns} FROM kanban_boards WHERE id = ?",
+            (board_id,),
+        ).fetchone()
+        if row is None:
+            raise BoardNotFoundError(f"Board {board_id} does not exist.")
+        if row["user_id"] != user_id:
+            raise BoardAccessDeniedError("You do not have access to this board.")
+        return row
+
     def list_boards(self, user_id: int) -> list[dict[str, Any]]:
         with self._connect() as connection:
             rows = connection.execute(
@@ -325,13 +319,12 @@ class KanbanRepository:
 
     def create_board(self, user_id: int, name: str, description: str = "") -> dict[str, Any]:
         with self._connect() as connection:
-            updated_at = _now_iso()
             cursor = connection.execute(
                 """
                 INSERT INTO kanban_boards (user_id, name, description, board_json, updated_at, version)
                 VALUES (?, ?, ?, ?, ?, 1)
                 """,
-                (user_id, name, description, json.dumps(NEW_BOARD_TEMPLATE), updated_at),
+                (user_id, name, description, json.dumps(NEW_BOARD_TEMPLATE), _now_iso()),
             )
             board_id = cursor.lastrowid
             connection.commit()
@@ -345,19 +338,7 @@ class KanbanRepository:
 
     def get_board_by_id(self, board_id: int, user_id: int) -> dict[str, Any]:
         with self._connect() as connection:
-            row = connection.execute(
-                """
-                SELECT id, user_id, name, description, board_json, updated_at
-                FROM kanban_boards
-                WHERE id = ?
-                """,
-                (board_id,),
-            ).fetchone()
-            if row is None:
-                raise BoardNotFoundError(f"Board {board_id} does not exist.")
-            if row["user_id"] != user_id:
-                raise BoardAccessDeniedError("You do not have access to this board.")
-
+            row = self._get_board_row(connection, board_id, user_id)
             return {
                 "board_id": row["id"],
                 "name": row["name"],
@@ -367,23 +348,17 @@ class KanbanRepository:
 
     def update_board_data(self, board_id: int, user_id: int, board: dict[str, Any]) -> dict[str, Any]:
         with self._connect() as connection:
-            row = connection.execute(
-                "SELECT id, user_id, name, description FROM kanban_boards WHERE id = ?",
-                (board_id,),
-            ).fetchone()
-            if row is None:
-                raise BoardNotFoundError(f"Board {board_id} does not exist.")
-            if row["user_id"] != user_id:
-                raise BoardAccessDeniedError("You do not have access to this board.")
-
-            updated_at = _now_iso()
+            row = self._get_board_row(
+                connection, board_id, user_id,
+                columns="id, user_id, name, description",
+            )
             connection.execute(
                 """
                 UPDATE kanban_boards
                 SET board_json = ?, updated_at = ?, version = version + 1
                 WHERE id = ?
                 """,
-                (json.dumps(board), updated_at, board_id),
+                (json.dumps(board), _now_iso(), board_id),
             )
             connection.commit()
 
@@ -396,15 +371,10 @@ class KanbanRepository:
 
     def update_board_meta(self, board_id: int, user_id: int, name: str, description: str) -> dict[str, Any]:
         with self._connect() as connection:
-            row = connection.execute(
-                "SELECT id, user_id, board_json FROM kanban_boards WHERE id = ?",
-                (board_id,),
-            ).fetchone()
-            if row is None:
-                raise BoardNotFoundError(f"Board {board_id} does not exist.")
-            if row["user_id"] != user_id:
-                raise BoardAccessDeniedError("You do not have access to this board.")
-
+            row = self._get_board_row(
+                connection, board_id, user_id,
+                columns="id, user_id, board_json",
+            )
             updated_at = _now_iso()
             connection.execute(
                 """
@@ -428,15 +398,10 @@ class KanbanRepository:
 
     def delete_board(self, board_id: int, user_id: int) -> None:
         with self._connect() as connection:
-            row = connection.execute(
-                "SELECT id, user_id FROM kanban_boards WHERE id = ?",
-                (board_id,),
-            ).fetchone()
-            if row is None:
-                raise BoardNotFoundError(f"Board {board_id} does not exist.")
-            if row["user_id"] != user_id:
-                raise BoardAccessDeniedError("You do not have access to this board.")
-
+            self._get_board_row(
+                connection, board_id, user_id,
+                columns="id, user_id",
+            )
             connection.execute("DELETE FROM kanban_boards WHERE id = ?", (board_id,))
             connection.commit()
 
@@ -469,7 +434,6 @@ class KanbanRepository:
             if user_row is None:
                 raise UserNotFoundError(f"User '{username}' does not exist.")
 
-            # Get first board for user
             board_row = connection.execute(
                 "SELECT id FROM kanban_boards WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1",
                 (user_row["id"],),
@@ -524,14 +488,10 @@ class KanbanRepository:
         if row is None:
             return
 
-        should_repair = False
         try:
             parsed_board = json.loads(row["board_json"])
             BoardModel.model_validate(parsed_board)
         except (json.JSONDecodeError, ValidationError):
-            should_repair = True
-
-        if should_repair:
             connection.execute(
                 """
                 UPDATE kanban_boards

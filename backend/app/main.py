@@ -11,7 +11,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.status import (
-    HTTP_400_BAD_REQUEST,
     HTTP_401_UNAUTHORIZED,
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
@@ -23,8 +22,7 @@ from app.ai_client import (
     AI_TEST_PROMPT,
     OPENROUTER_MODEL,
     OpenRouterConfigError,
-    OpenRouterRequestError,
-    OpenRouterSchemaError,
+    OpenRouterError,
     run_connectivity_test,
     run_structured_kanban_chat,
 )
@@ -85,6 +83,20 @@ def _resolve_db_path() -> Path:
     return DEFAULT_DB_PATH
 
 
+def _raise_for_openrouter_error(error: OpenRouterError) -> None:
+    """Map OpenRouter errors to appropriate HTTP responses."""
+    if isinstance(error, OpenRouterConfigError):
+        raise HTTPException(status_code=500, detail=str(error)) from error
+    raise HTTPException(status_code=502, detail=str(error)) from error
+
+
+def _raise_for_board_access_error(error: BoardNotFoundError | BoardAccessDeniedError) -> None:
+    """Map board access errors to appropriate HTTP responses."""
+    if isinstance(error, BoardNotFoundError):
+        raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=str(error)) from error
+    raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail=str(error)) from error
+
+
 def create_app() -> FastAPI:
     repository = KanbanRepository(db_path=_resolve_db_path())
     rate_store: dict[str, list[float]] = defaultdict(list)
@@ -112,9 +124,7 @@ def create_app() -> FastAPI:
             )
         try:
             payload = decode_access_token(credentials.credentials)
-            user_id = int(payload["sub"])
-            username = payload["username"]
-            return {"user_id": user_id, "username": username}
+            return {"user_id": int(payload["sub"]), "username": payload["username"]}
         except AuthError as error:
             raise HTTPException(
                 status_code=HTTP_401_UNAUTHORIZED,
@@ -132,7 +142,7 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=ALLOWED_ORIGINS,
-        allow_methods=["GET", "POST", "PUT", "DELETE"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
         allow_headers=["Content-Type", "Authorization"],
     )
 
@@ -242,10 +252,8 @@ def create_app() -> FastAPI:
     ) -> BoardDetailResponse:
         try:
             result = repository.get_board_by_id(board_id, current_user["user_id"])
-        except BoardNotFoundError as error:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=str(error)) from error
-        except BoardAccessDeniedError as error:
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail=str(error)) from error
+        except (BoardNotFoundError, BoardAccessDeniedError) as error:
+            _raise_for_board_access_error(error)
 
         return BoardDetailResponse(
             board_id=result["board_id"],
@@ -266,10 +274,8 @@ def create_app() -> FastAPI:
                 user_id=current_user["user_id"],
                 board=payload.model_dump(mode="json"),
             )
-        except BoardNotFoundError as error:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=str(error)) from error
-        except BoardAccessDeniedError as error:
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail=str(error)) from error
+        except (BoardNotFoundError, BoardAccessDeniedError) as error:
+            _raise_for_board_access_error(error)
 
         return BoardDetailResponse(
             board_id=result["board_id"],
@@ -291,10 +297,8 @@ def create_app() -> FastAPI:
                 name=payload.name,
                 description=payload.description,
             )
-        except BoardNotFoundError as error:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=str(error)) from error
-        except BoardAccessDeniedError as error:
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail=str(error)) from error
+        except (BoardNotFoundError, BoardAccessDeniedError) as error:
+            _raise_for_board_access_error(error)
 
         return BoardSummaryResponse(**result)
 
@@ -305,10 +309,8 @@ def create_app() -> FastAPI:
     ) -> None:
         try:
             repository.delete_board(board_id, current_user["user_id"])
-        except BoardNotFoundError as error:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=str(error)) from error
-        except BoardAccessDeniedError as error:
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail=str(error)) from error
+        except (BoardNotFoundError, BoardAccessDeniedError) as error:
+            _raise_for_board_access_error(error)
 
     # --- AI endpoints ---
 
@@ -317,10 +319,8 @@ def create_app() -> FastAPI:
         _check_rate_limit(request)
         try:
             answer = run_connectivity_test(prompt=AI_TEST_PROMPT)
-        except OpenRouterConfigError as error:
-            raise HTTPException(status_code=500, detail=str(error)) from error
-        except OpenRouterRequestError as error:
-            raise HTTPException(status_code=502, detail=str(error)) from error
+        except OpenRouterError as error:
+            _raise_for_openrouter_error(error)
 
         return AiTestResponseModel(
             provider="openrouter",
@@ -340,10 +340,8 @@ def create_app() -> FastAPI:
 
         try:
             board_result = repository.get_board_by_id(board_id, current_user["user_id"])
-        except BoardNotFoundError as error:
-            raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=str(error)) from error
-        except BoardAccessDeniedError as error:
-            raise HTTPException(status_code=HTTP_403_FORBIDDEN, detail=str(error)) from error
+        except (BoardNotFoundError, BoardAccessDeniedError) as error:
+            _raise_for_board_access_error(error)
 
         board_data = board_result["board"]
 
@@ -353,12 +351,8 @@ def create_app() -> FastAPI:
                 question=payload.question,
                 history=payload.history,
             )
-        except OpenRouterConfigError as error:
-            raise HTTPException(status_code=500, detail=str(error)) from error
-        except OpenRouterSchemaError as error:
-            raise HTTPException(status_code=502, detail=str(error)) from error
-        except OpenRouterRequestError as error:
-            raise HTTPException(status_code=502, detail=str(error)) from error
+        except OpenRouterError as error:
+            _raise_for_openrouter_error(error)
 
         next_board = board_data
         patch_applied = False
@@ -376,7 +370,7 @@ def create_app() -> FastAPI:
                 logger.warning("AI patch rejected for board %d: %s", board_id, error)
                 next_board = board_data
             except (BoardNotFoundError, BoardAccessDeniedError) as error:
-                raise HTTPException(status_code=HTTP_404_NOT_FOUND, detail=str(error)) from error
+                _raise_for_board_access_error(error)
 
         return AiChatResponseModel(
             message=ai_response.message,
@@ -431,12 +425,8 @@ def create_app() -> FastAPI:
                 question=payload.question,
                 history=payload.history,
             )
-        except OpenRouterConfigError as error:
-            raise HTTPException(status_code=500, detail=str(error)) from error
-        except OpenRouterSchemaError as error:
-            raise HTTPException(status_code=502, detail=str(error)) from error
-        except OpenRouterRequestError as error:
-            raise HTTPException(status_code=502, detail=str(error)) from error
+        except OpenRouterError as error:
+            _raise_for_openrouter_error(error)
 
         next_board = board_data
         patch_applied = False

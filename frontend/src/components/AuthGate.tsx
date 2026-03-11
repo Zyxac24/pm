@@ -4,7 +4,6 @@ import { useEffect, useState, type FormEvent } from "react";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { BoardSelector } from "@/components/BoardSelector";
 import {
-  AUTH_TOKEN_KEY,
   clearSession,
   getToken,
   getUsername,
@@ -21,7 +20,7 @@ const initialFormState = {
   password: "",
 };
 
-export const AuthGate = () => {
+export function AuthGate() {
   const [authState, setAuthState] = useState<AuthState>("checking");
   const [authMode, setAuthMode] = useState<AuthMode>("login");
   const [formState, setFormState] = useState(initialFormState);
@@ -163,11 +162,9 @@ export const AuthGate = () => {
               disabled={isSubmitting}
               className="rounded-full bg-[var(--secondary-purple)] px-5 py-2 text-xs font-semibold uppercase tracking-wide text-white transition hover:brightness-110 disabled:opacity-50"
             >
-              {isSubmitting
-                ? "Please wait..."
-                : authMode === "login"
-                  ? "Log in"
-                  : "Register"}
+              {isSubmitting && "Please wait..."}
+              {!isSubmitting && authMode === "login" && "Log in"}
+              {!isSubmitting && authMode === "register" && "Register"}
             </button>
             <button
               type="button"
@@ -186,4 +183,4 @@ export const AuthGate = () => {
       </section>
     </main>
   );
-};
+}

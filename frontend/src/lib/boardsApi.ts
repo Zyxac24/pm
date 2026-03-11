@@ -1,5 +1,5 @@
 import type { BoardData } from "@/lib/kanban";
-import { getToken } from "@/lib/auth";
+import { authHeaders, getErrorMessage } from "@/lib/apiUtils";
 
 export type BoardSummary = {
   board_id: number;
@@ -17,25 +17,7 @@ export type BoardDetail = {
   board: BoardData;
 };
 
-const getErrorMessage = async (response: Response) => {
-  try {
-    const payload = (await response.json()) as { detail?: string };
-    if (payload.detail) return payload.detail;
-  } catch {
-    // ignore
-  }
-  return `Request failed with status ${response.status}.`;
-};
-
-const authHeaders = () => {
-  const token = getToken();
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-};
-
-export const listBoards = async (): Promise<BoardSummary[]> => {
+export async function listBoards(): Promise<BoardSummary[]> {
   const response = await fetch("/api/boards", {
     headers: authHeaders(),
     cache: "no-store",
@@ -43,12 +25,12 @@ export const listBoards = async (): Promise<BoardSummary[]> => {
   if (!response.ok) throw new Error(await getErrorMessage(response));
   const data = (await response.json()) as { boards: BoardSummary[] };
   return data.boards;
-};
+}
 
-export const createBoard = async (
+export async function createBoard(
   name: string,
   description: string = ""
-): Promise<BoardDetail> => {
+): Promise<BoardDetail> {
   const response = await fetch("/api/boards", {
     method: "POST",
     headers: authHeaders(),
@@ -56,21 +38,21 @@ export const createBoard = async (
   });
   if (!response.ok) throw new Error(await getErrorMessage(response));
   return (await response.json()) as BoardDetail;
-};
+}
 
-export const getBoard = async (boardId: number): Promise<BoardDetail> => {
+export async function getBoard(boardId: number): Promise<BoardDetail> {
   const response = await fetch(`/api/boards/${boardId}`, {
     headers: authHeaders(),
     cache: "no-store",
   });
   if (!response.ok) throw new Error(await getErrorMessage(response));
   return (await response.json()) as BoardDetail;
-};
+}
 
-export const updateBoardData = async (
+export async function updateBoardData(
   boardId: number,
   board: BoardData
-): Promise<BoardDetail> => {
+): Promise<BoardDetail> {
   const response = await fetch(`/api/boards/${boardId}`, {
     method: "PUT",
     headers: authHeaders(),
@@ -78,13 +60,13 @@ export const updateBoardData = async (
   });
   if (!response.ok) throw new Error(await getErrorMessage(response));
   return (await response.json()) as BoardDetail;
-};
+}
 
-export const updateBoardMeta = async (
+export async function updateBoardMeta(
   boardId: number,
   name: string,
   description: string
-): Promise<BoardSummary> => {
+): Promise<BoardSummary> {
   const response = await fetch(`/api/boards/${boardId}/meta`, {
     method: "PATCH",
     headers: authHeaders(),
@@ -92,12 +74,12 @@ export const updateBoardMeta = async (
   });
   if (!response.ok) throw new Error(await getErrorMessage(response));
   return (await response.json()) as BoardSummary;
-};
+}
 
-export const deleteBoard = async (boardId: number): Promise<void> => {
+export async function deleteBoard(boardId: number): Promise<void> {
   const response = await fetch(`/api/boards/${boardId}`, {
     method: "DELETE",
     headers: authHeaders(),
   });
   if (!response.ok) throw new Error(await getErrorMessage(response));
-};
+}

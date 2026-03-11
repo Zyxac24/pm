@@ -12,7 +12,7 @@ type BoardSelectorProps = {
   onSelectBoard: (boardId: number) => void;
 };
 
-export const BoardSelector = ({ onSelectBoard }: BoardSelectorProps) => {
+export function BoardSelector({ onSelectBoard }: BoardSelectorProps) {
   const [boards, setBoards] = useState<BoardSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -190,4 +190,4 @@ export const BoardSelector = ({ onSelectBoard }: BoardSelectorProps) => {
       </div>
     </main>
   );
-};
+}

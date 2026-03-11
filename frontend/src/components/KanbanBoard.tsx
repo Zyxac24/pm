@@ -23,7 +23,7 @@ type KanbanBoardProps = {
   onBack: () => void;
 };
 
-export const KanbanBoard = ({ boardId, onBack }: KanbanBoardProps) => {
+export function KanbanBoard({ boardId, onBack }: KanbanBoardProps) {
   const [board, setBoard] = useState<BoardData | null>(null);
   const [boardName, setBoardName] = useState("");
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
@@ -320,4 +320,4 @@ export const KanbanBoard = ({ boardId, onBack }: KanbanBoardProps) => {
       </main>
     </div>
   );
-};
+}
